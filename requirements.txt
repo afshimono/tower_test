@@ -1,0 +1,7 @@
+notebook==7.3.2
+pandas==2.2.3
+seaborn==0.13.2
+click==8.1.8
+tqdm==4.67.1
+numpy==2.2.3
+ipywidgets==7.4.2
