@@ -102,6 +102,10 @@ def process_file(input_path:str, quantile:float, output_path:str):
             point_list = calculate_mean_std_and_z_scores(current_cluster)
             point_dict_list += [item.to_dict() for item in point_list]
             current_cluster = [LocationPoint.from_row(row)]
+    if len(current_cluster) > 0:
+        point_list = calculate_mean_std_and_z_scores(current_cluster)
+        point_dict_list += [item.to_dict() for item in point_list]
+        current_cluster = [LocationPoint.from_row(row)]
 
     result_df = pd.DataFrame(point_dict_list)
     print(f"Total output: {len(result_df.index)}")
