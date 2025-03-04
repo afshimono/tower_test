@@ -47,7 +47,7 @@ def calculate_mean_std_and_z_scores(input_list:List[LocationPoint]) -> List[Loca
         total_std = np.sqrt(np.sum(np.power([std_lat,std_lon],2)))
 
     for item in input_list:
-        if item.location == (0,0):
+        if item.location == (0, 0) or item.date_and_time is None:
             item.z_dist = -10
             item.tower_jump = "y"
             item.accuracy = 99
@@ -76,13 +76,15 @@ def process_file(input_path:str, quantile:float, output_path:str):
         df = pd.read_csv(input_path)
         print("Done.")
 
+    # reset index
+    df.reset_index(inplace=True)
+
     df["Datetime"] = pd.to_datetime(df["Local Date & Time"], format="%m/%d/%y %H:%M")  # convert to python datetime
     df = df.sort_values(by=["Datetime"])
     cleansed_df = df[df["Datetime"].notnull()]  # remove lines without datetime
 
     # calculates the diff in time between current row and next
-    df["DatetimeDelta"] =  cleansed_df["Datetime"] - cleansed_df["Datetime"].shift(1)
-    df["DatetimeDelta"] = df["DatetimeDelta"].fillna(0)
+    df["DatetimeDelta"] = cleansed_df["Datetime"] - cleansed_df["Datetime"].shift(1)
 
     # convert delta to minutes
     df["DatetimeDeltaMinutes"] = df["DatetimeDelta"].apply(lambda x: (x.total_seconds())/60 if x else 0)
@@ -95,9 +97,13 @@ def process_file(input_path:str, quantile:float, output_path:str):
     point_dict_list = []
     current_cluster = [LocationPoint.from_row(df.iloc[0])]
 
+    # Convert NaTType to None
+    df.replace({np.nan: None}, inplace=True)
+
     for _, row in tqdm(islice(df.iterrows(), 1, total_records), desc="Total Rows:", total=(total_records - 1)):
-        if row["DatetimeDeltaMinutes"] < quantile_limit:
-            current_cluster.append(LocationPoint.from_row(row))
+        if row["DatetimeDeltaMinutes"] is not None and row["DatetimeDeltaMinutes"] < quantile_limit:
+            next_location = LocationPoint.from_row(row)
+            current_cluster.append(next_location)
         else:  # when cluster ends, calculate values for existing cluster and empties list
             point_list = calculate_mean_std_and_z_scores(current_cluster)
             point_dict_list += [item.to_dict() for item in point_list]
@@ -105,14 +111,11 @@ def process_file(input_path:str, quantile:float, output_path:str):
     if len(current_cluster) > 0:
         point_list = calculate_mean_std_and_z_scores(current_cluster)
         point_dict_list += [item.to_dict() for item in point_list]
-        current_cluster = [LocationPoint.from_row(row)]
 
     result_df = pd.DataFrame(point_dict_list)
     print(f"Total output: {len(result_df.index)}")
-    result_df = result_df.sort_values(
-        by=["page", "item"], ascending=[True, True]
-    )  # reorders output to the same as input
-    result_df.to_csv(output_path)
+    result_df = result_df.sort_values(by=["index"], ascending=[True])  # reorders output to the same as input
+    result_df.to_csv(output_path, index=False)
 
 
 if __name__ == "__main__":

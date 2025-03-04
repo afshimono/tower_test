@@ -1,11 +1,26 @@
 from typing import Tuple
 import numpy as np
+
+
+class LocationError(Exception):
+    """
+    Problem creating a location...
+    """
+
+
 class LocationPoint:
-    def __init__(self, location:Tuple[float,float], page:int, item:int, date_and_time:str):
-        self.location = location
-        self.page = page
-        self.item = item
+
+    def __init__(self, location: Tuple[float, float], page: int, item: int, date_and_time: str, index: int):
+
+        self.location = location if location != (None, None) else (0, 0)
+        try:
+            self.page = int(page)
+            self.item = int(item)
+        except Exception as e:
+            self.page = None
+            self.item = None
         self.date_and_time = date_and_time
+        self.index = int(index)
         self.z_dist = None
         self.tower_jump = None
         self.accuracy = None
@@ -19,11 +34,12 @@ class LocationPoint:
 
     def to_dict(self):
         return {
-            "page":self.page,
-            "item":self.item,
-            "date_and_time":self.date_and_time,
+            "index": self.index,
+            "page": self.page,
+            "item": self.item,
+            "date_and_time": self.date_and_time,
             "tower_jump": self.tower_jump,
-            "accuracy": "{:.2f}".format(float(self.accuracy))
+            "accuracy": "{:.2f}".format(float(self.accuracy)),
         }
 
     @staticmethod
@@ -34,4 +50,6 @@ class LocationPoint:
             lat = float(lat)
         if isinstance(lon, np.float64):
             lon = float(lon)
-        return LocationPoint((lat,lon),input["Page Number"],input["Item Number"],input["Local Date & Time"])
+        return LocationPoint(
+            (lat, lon), input["Page Number"], input["Item Number"], input["Local Date & Time"], input["index"]
+        )
